@@ -11,6 +11,7 @@ usage() {
     echo "    -t <TAG1D> : directory name to put 1D results (default: pipe1d_workdir)" 1>&2
     echo "    -c <CORES> : number of cores to use (default: 1)" 1>&2
     echo "    -G : don't clone or update from git" 1>&2
+    echo "    -k : skip 2D procedure" 1>&2
     echo "    <PREFIX> : directory under which to operate" 1>&2
     echo "" 1>&2
     exit 1
@@ -21,9 +22,10 @@ SERVER="gfarm"
 RERUN="integration"  # Rerun name to use
 TARGET="INTEGRATION"  # Directory name to give data repo
 TAG1D="pipe1d_workdir" # Directory name for 1D results
+SKIP2D=false
 CORES=1  # Number of cores to use
 USE_GIT=true # checkout/update from git
-while getopts ":c:t:d:Gr:" opt; do
+while getopts ":c:t:d:Gkr:" opt; do
     case "${opt}" in
         c)
             CORES=${OPTARG}
@@ -40,6 +42,9 @@ while getopts ":c:t:d:Gr:" opt; do
         t)
             TAG1D=${OPTARG}
             ;;
+        k)
+            SKIP2D=true
+            ;;
         *)
             usage
             ;;
@@ -55,25 +60,30 @@ BASEDIR="$(pwd)"
 
 if [ "$SERVER" = "gfarm" ]; then
     # run 2D pipeline
-    if $USE_GIT; then
-        pfs_integration_test.sh -r $RERUN -d $TARGET -c $CORES $PREFIX 2>&1 | tee test_e2e_pipe2d.log
-    else
-        cd $BASEDIR
-        setup -jr drp_stella_data
-        pfs_integration_test.sh -r $RERUN -d $TARGET -c $CORES -G $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+    if [ "$SKIP2D" = false ]; then
+        if $USE_GIT; then
+            pfs_integration_test.sh -r $RERUN -d $TARGET -c $CORES $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+        else
+            cd $BASEDIR
+            setup -jr drp_stella_data
+            pfs_integration_test.sh -r $RERUN -d $TARGET -c $CORES -G $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+        fi
     fi
     # find directories where pfsOBject files exist
     cd $BASEDIR
+    mkdir -p $TAG1D
+    mkdir -p $TAG1D/output
+    cp -r calibration $TAG1D
     PFSOBJECT_DIR="$(pwd)"/$TARGET/rerun/$RERUN/pipeline/pfsObject/
-    cp -r calibration $PFSOBJECT_DIR
     cd $PFSOBJECT_DIR
     find ./ -name "pfsObject*.fits" | awk '{gsub("/pfsObject"," ");print $1}' | uniq | while read dir; do   
         # run 1D pipeline
         echo $dir
         cd $PFSOBJECT_DIR
-        drp_1dpipe --workdir=. --spectra_dir=$dir  --output_dir=$TAG1D --concurrency=$CORES --loglevel=INFO 2>&1 | tee $BASEDIR/test_e2e_pipe1d.log
+        drp_1dpipe --workdir=$BASEDIR/$TAG1D --spectra_dir=$PFSOBJECT_DIR/$dir --output_dir=$BASEDIR/$TAG1D/output --parameters_file=$BASEDIR/parameters_e2e.json --concurrency=$CORES --loglevel=INFO 2>&1 | tee $BASEDIR/test_e2e_pipe1d.log
     done
     cd $BASEDIR
+
 else
     echo "Use gfarm server"
 fi
