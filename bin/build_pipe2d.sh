@@ -55,6 +55,10 @@ if [ "$SERVER" = "gfarm" ]; then
     cd $PREFIX
     setup pipe_drivers
     $SOURCE/build_pfs.sh -b $BRANCH -t $TAG 2>&1 | tee build_pfs_pipe2d.log
+elif [ "$SERVER" = "docker" ]; then
+    cd $PREFIX
+    setup pipe_drivers
+    $SOURCE/build_pfs.sh -b $BRANCH -t $TAG 2>&1 | tee build_pfs_pipe2d.log
 fi
 
 echo ""

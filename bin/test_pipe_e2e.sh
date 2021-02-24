@@ -62,11 +62,13 @@ if [ "$SERVER" = "gfarm" ]; then
     # run 2D pipeline
     if [ "$SKIP2D" = false ]; then
         if $USE_GIT; then
-            pfs_integration_test.sh -r $RERUN -d $TARGET -c $CORES $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+            #pfs_integration_test.sh -r $RERUN -d $TARGET -c $CORES $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+            run_pipe2d_integration_test.sh -r $RERUN -d $TARGET -c $CORES $PREFIX 2>&1 | tee test_e2e_pipe2d.log
         else
             cd $BASEDIR
             setup -jr drp_stella_data
-            pfs_integration_test.sh -r $RERUN -d $TARGET -c $CORES -G $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+            #pfs_integration_test.sh -r $RERUN -d $TARGET -c $CORES -G $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+            run_pipe2d_integration_test.sh -r $RERUN -d $TARGET -c $CORES -G $PREFIX 2>&1 | tee test_e2e_pipe2d.log
         fi
     fi
     # find directories where pfsOBject files exist
@@ -83,9 +85,35 @@ if [ "$SERVER" = "gfarm" ]; then
         drp_1dpipe --workdir=$BASEDIR/$TAG1D --spectra_dir=$PFSOBJECT_DIR/$dir --output_dir=$BASEDIR/$TAG1D/output --parameters_file=$BASEDIR/parameters_e2e.json --concurrency=$CORES --loglevel=INFO 2>&1 | tee $BASEDIR/test_e2e_pipe1d.log
     done
     cd $BASEDIR
-
+elif [ "$SERVER" = "docker" ]; then
+    # run 2D pipeline
+    if [ "$SKIP2D" = false ]; then
+        if $USE_GIT; then
+            #pfs_integration_test.sh -r $RERUN -d $TARGET -c $CORES $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+            run_pipe2d_integration_test.sh -r $RERUN -d $TARGET -c $CORES $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+        else
+            cd $BASEDIR
+            setup -jr drp_stella_data
+            #pfs_integration_test.sh -r $RERUN -d $TARGET -c $CORES -G $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+            run_pipe2d_integration_test.sh -r $RERUN -d $TARGET -c $CORES -G $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+        fi
+    fi
+    # find directories where pfsOBject files exist
+    cd $BASEDIR
+    mkdir -p $TAG1D
+    mkdir -p $TAG1D/output
+    cp -r calibration $TAG1D
+    PFSOBJECT_DIR="$(pwd)"/$TARGET/rerun/$RERUN/pipeline/pfsObject/
+    cd $PFSOBJECT_DIR
+    find ./ -name "pfsObject*.fits" | awk '{gsub("/pfsObject"," ");print $1}' | uniq | while read dir; do   
+        # run 1D pipeline
+        echo $dir
+        cd $PFSOBJECT_DIR
+        drp_1dpipe --workdir=$BASEDIR/$TAG1D --spectra_dir=$PFSOBJECT_DIR/$dir --output_dir=$BASEDIR/$TAG1D/output --parameters_file=$BASEDIR/parameters_e2e.json --concurrency=$CORES --loglevel=INFO 2>&1 | tee $BASEDIR/test_e2e_pipe1d.log
+    done
+    cd $BASEDIR
 else
-    echo "Use gfarm server"
+    echo "Use gfarm or docker server"
 fi
 
 echo ""

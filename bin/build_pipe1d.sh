@@ -64,12 +64,36 @@ if [ "$SERVER" = "gfarm" ]; then
         git checkout $BRANCH
         git pull
         cd build
-        make clean
-        cmake3 .. -DCMAKE_INSTALL_PREFIX=$STACK -DMISSING_THIRDPARTIES=boost
-        make -j 4  2>&1 | tee $TARGET/build_pfs_pipe1d_library.log
-        make install
+        rm -rf *
+        cmake .. -DCMAKE_INSTALL_PREFIX=$STACK -DMISSING_THIRDPARTIES=boost  2>&1 | tee $TARGET/build_pfs_pipe1d_library.log
+        make -j 4  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
+        make install  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
         cd ..
-        python setup.py install
+        python setup.py install  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
+        cd build
+        if [ "$SKIP" = false ]; then
+            make test
+        fi
+    fi
+    cd $SOURCE/drp_1dpipe
+    git checkout $BRANCH
+    git pull
+    python setup.py install 2>&1 | tee $TARGET/build_pfs_pipe1d_client.log
+    if [ "$SKIP" = false ]; then
+        pytest
+    fi
+elif [ "$SERVER" = "docker" ]; then
+    if [ "$LIMITED" = false ]; then
+        cd $SOURCE/drp_1d
+        git checkout $BRANCH
+        git pull
+        cd build
+        rm -rf *
+        cmake .. -DCMAKE_INSTALL_PREFIX=$STACK 2>&1 | tee $TARGET/build_pfs_pipe1d_library.log
+        make -j 4  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
+        make install  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
+        cd ..
+        python setup.py install  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
         cd build
         if [ "$SKIP" = false ]; then
             make test
