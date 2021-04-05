@@ -133,26 +133,57 @@ if ( $BUILD_CALIBS ); then
         $drp_stella_data/raw/PFFA*.fits \
         -c clobber=True register.ignore=True
 
-    # Build calibs
+    # Build calibs for brn
     generateCommands.py "$TARGET" \
         "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
-        calib.sh \
-        --rerun="$RERUN" --init --blocks=test_calib \
+        calibs_for_brn.sh \
+        --rerun="$RERUN"/calib --init --blocks=calibs_for_brn \
         -j "$CORES" $cleanFlag
+    sh calibs_for_brn.sh
 
-    sh calib.sh
+    # Build calibs for bmn
+    generateCommands.py "$TARGET" \
+        "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
+        calibs_for_m.sh \
+        --rerun="$RERUN"/calib --blocks=calibs_for_m \
+        -j "$CORES" $cleanFlag
+    sh calibs_for_m.sh
+
+    # Build arcs for brn
+    generateCommands.py "$TARGET" \
+        "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
+        arc_brn.sh \
+        --rerun="$RERUN"/calib --blocks=arc_brn \
+        -j "$CORES" $cleanFlag
+    sh arc_brn.sh
+
+    # Build arcs for bmn
+    generateCommands.py "$TARGET" \
+        "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
+        arc_m.sh \
+        --rerun="$RERUN"/calib --blocks=arc_m \
+        -j "$CORES" $cleanFlag
+    sh arc_m.sh
+
 fi
 
 # Detrend only
 # detrend.py $TARGET --calib $TARGET/CALIB --rerun $RERUN/detrend --id visit=47 $runArgs || exit 1
 
 # End-to-end pipeline
+# science frames for brn
 generateCommands.py "$TARGET" \
     "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
-    science.sh \
-    --rerun="$RERUN" --blocks=test_science \
+    science_for_brn.sh \
+    --rerun="$RERUN" --blocks=science_for_brn \
     -j "$CORES" $cleanFlag
-
-sh science.sh
+sh science_for_brn.sh
+# science frames for bmn
+generateCommands.py "$TARGET" \
+    "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
+    science_for_bmn.sh \
+    --rerun="$RERUN" --blocks=science_for_bmn \
+    -j "$CORES" $cleanFlag
+sh science_for_bmn.sh
 
 echo "Done."
