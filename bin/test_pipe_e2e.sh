@@ -82,7 +82,7 @@ if [ "$SERVER" = "gfarm" ]; then
         # run 1D pipeline
         echo $dir
         cd $PFSOBJECT_DIR
-        drp_1dpipe --workdir=$BASEDIR/$TAG1D --spectra_dir=$PFSOBJECT_DIR/$dir --output_dir=$BASEDIR/$TAG1D/output --parameters_file=$BASEDIR/parameters_e2e.json --concurrency=$CORES --loglevel=INFO 2>&1 | tee $BASEDIR/test_e2e_pipe1d.log
+        drp_1dpipe --workdir=$BASEDIR/$TAG1D --spectra_dir=$PFSOBJECT_DIR/$dir --output_dir=$BASEDIR/$TAG1D/output --concurrency=$CORES --loglevel=INFO 2>&1 | tee $BASEDIR/test_e2e_pipe1d.log
     done
     cd $BASEDIR
 elif [ "$SERVER" = "docker" ]; then
@@ -109,7 +109,7 @@ elif [ "$SERVER" = "docker" ]; then
         # run 1D pipeline
         echo $dir
         cd $PFSOBJECT_DIR
-        drp_1dpipe --workdir=$BASEDIR/$TAG1D --spectra_dir=$PFSOBJECT_DIR/$dir --output_dir=$BASEDIR/$TAG1D/output --parameters_file=$BASEDIR/parameters_e2e.json --concurrency=$CORES --loglevel=INFO 2>&1 | tee $BASEDIR/test_e2e_pipe1d.log
+        drp_1dpipe --workdir=$BASEDIR/$TAG1D --spectra_dir=$PFSOBJECT_DIR/$dir --output_dir=$BASEDIR/$TAG1D/output --concurrency=$CORES --loglevel=INFO 2>&1 | tee $BASEDIR/test_e2e_pipe1d.log
     done
     cd $BASEDIR
 else
