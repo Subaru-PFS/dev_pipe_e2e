@@ -61,12 +61,12 @@ TARGET="$(pwd)"
 if [ "$SERVER" = "gfarm" ]; then
     if [ "$LIMITED" = false ]; then
         cd $SOURCE/drp_1d
-        git checkout $BRANCH
+        git checkout master
         git pull
         cd build
         make clean
         rm -rf *
-        cmake .. -DCMAKE_INSTALL_PREFIX=$STACK -DMISSING_THIRDPARTIES=boost  2>&1 | tee $TARGET/build_pfs_pipe1d_library.log
+        cmake .. -DCMAKE_INSTALL_PREFIX=$STACK -DCMAKE_PREFIX_PATH=$STACK 2>&1 | tee $TARGET/build_pfs_pipe1d_library.log
         make -j 4  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
         make install  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
         cd ..
@@ -86,7 +86,7 @@ if [ "$SERVER" = "gfarm" ]; then
 elif [ "$SERVER" = "docker" ]; then
     if [ "$LIMITED" = false ]; then
         cd $SOURCE/drp_1d
-        git checkout $BRANCH
+        git checkout master
         git pull
         cd build
         make clean
