@@ -67,7 +67,7 @@ if [ "$SERVER" = "gfarm" ]; then
         make clean
         rm -rf *
         cmake .. -DCMAKE_INSTALL_PREFIX=$STACK -DCMAKE_PREFIX_PATH=$STACK 2>&1 | tee $TARGET/build_pfs_pipe1d_library.log
-        make -j 4  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
+        make -j 8  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
         make install  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
         cd ..
         pip install -U .  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
@@ -88,11 +88,12 @@ elif [ "$SERVER" = "docker" ]; then
         cd $SOURCE/drp_1d
         git checkout master
         git pull
+        mkdir build
         cd build
         make clean
         rm -rf *
-        cmake .. -DCMAKE_INSTALL_PREFIX=$STACK 2>&1 | tee $TARGET/build_pfs_pipe1d_library.log
-        make -j 4  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
+        cmake3 .. -DCMAKE_INSTALL_PREFIX=$STACK -DCMAKE_PREFIX_PATH=$STACK 2>&1 | tee $TARGET/build_pfs_pipe1d_library.log
+        make -j 8  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
         make install  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
         cd ..
         pip install -U .  2>&1 | tee -a $TARGET/build_pfs_pipe1d_library.log
