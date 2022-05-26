@@ -151,6 +151,8 @@ if $RUN_GEN2; then
     # Ingest calibs
     sh ingest_calibs.sh
 
+    ingestCuratedCalibs.py "$TARGET" --calib "$TARGET"/CALIB "$DRP_PFS_DATA_DIR"/curated/pfs/defects
+
     # End-to-end pipeline
     # science frames for brn
     generateCommands.py "$TARGET" \
