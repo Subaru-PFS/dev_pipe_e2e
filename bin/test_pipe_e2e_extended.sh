@@ -63,12 +63,12 @@ if [ "$SERVER" = "gfarm" ]; then
     if [ "$SKIP2D" = false ]; then
         if $USE_GIT; then
             #pfs_integration_test.sh -r $RERUN -d $TARGET -c $CORES $PREFIX 2>&1 | tee test_e2e_pipe2d.log
-            run_pipe2d_integration_extended_test.sh -r $RERUN -d $TARGET -c $CORES $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+            run_pipe2d_integration_extended_test.sh -r $RERUN -d $TARGET -c $CORES -2 $PREFIX 2>&1 | tee test_e2e_pipe2d.log
         else
             cd $BASEDIR
             setup -jr drp_stella_data
             #pfs_integration_test.sh -r $RERUN -d $TARGET -c $CORES -G $PREFIX 2>&1 | tee test_e2e_pipe2d.log
-            run_pipe2d_integration_extended_test.sh -r $RERUN -d $TARGET -c $CORES -G $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+            run_pipe2d_integration_extended_test.sh -r $RERUN -d $TARGET -c $CORES -G -2 $PREFIX 2>&1 | tee test_e2e_pipe2d.log
         fi
     fi
     # find directories where pfsOBject files exist
@@ -90,12 +90,12 @@ elif [ "$SERVER" = "docker" ]; then
     if [ "$SKIP2D" = false ]; then
         if $USE_GIT; then
             #pfs_integration_test.sh -r $RERUN -d $TARGET -c $CORES $PREFIX 2>&1 | tee test_e2e_pipe2d.log
-            run_pipe2d_integration_extended_test.sh -r $RERUN -d $TARGET -c $CORES $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+            run_pipe2d_integration_extended_test.sh -r $RERUN -d $TARGET -c $CORES -2 $PREFIX 2>&1 | tee test_e2e_pipe2d.log
         else
             cd $BASEDIR
             setup -jr drp_stella_data
             #pfs_integration_test.sh -r $RERUN -d $TARGET -c $CORES -G $PREFIX 2>&1 | tee test_e2e_pipe2d.log
-            run_pipe2d_integration_extended_test.sh -r $RERUN -d $TARGET -c $CORES -G $PREFIX 2>&1 | tee test_e2e_pipe2d.log
+            run_pipe2d_integration_extended_test.sh -r $RERUN -d $TARGET -c $CORES -G -2 $PREFIX 2>&1 | tee test_e2e_pipe2d.log
         fi
     fi
     # find directories where pfsOBject files exist

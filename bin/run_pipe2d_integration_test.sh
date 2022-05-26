@@ -17,7 +17,7 @@ fi
 usage() {
     echo "Exercise the PFS 2D pipeline code" 1>&2
     echo "" 1>&2
-    echo "Usage: $0 [-b <BRANCH>] [-r <RERUN>] [-d DIRNAME] [-c CORES] [-n] [-C] <PREFIX>" 1>&2
+    echo "Usage: $0 [-b <BRANCH>] [-r <RERUN>] [-d DIRNAME] [-c CORES] [-n] [-C] [-2] [-3] <PREFIX>" 1>&2
     echo "" 1>&2
     echo "    -b <BRANCH> : branch of drp_stella_data to use" 1>&2
     echo "    -r <RERUN> : rerun name to use (default: 'integration')" 1>&2
@@ -26,6 +26,8 @@ usage() {
     echo "    -G : don't clone or update from git" 1>&2
     echo "    -n : don't cleanup temporary products" 1>&2
     echo "    -C : don't create calibs" 1>&2
+    echo "    -2 : run Gen2 only" 1>&2
+    echo "    -3 : run Gen3 only" 1>&2
     echo "    <PREFIX> : directory under which to operate" 1>&2
     echo "" 1>&2
     exit 1
@@ -39,7 +41,9 @@ CORES=1  # Number of cores to use
 USE_GIT=true # checkout/update from git
 CLEANUP=true  # Clean temporary products?
 BUILD_CALIBS=true  # Build calibs?
-while getopts ":b:c:Cd:Gnr:" opt; do
+RUN_GEN2=true  # run Gen2 tests?
+RUN_GEN3=true  # run Gen3 tests?
+while getopts ":b:c:Cd:Gnr:23" opt; do
     case "${opt}" in
         b)
             BRANCH=${OPTARG}
@@ -61,6 +65,14 @@ while getopts ":b:c:Cd:Gnr:" opt; do
             ;;
         r)
             RERUN=${OPTARG}
+            ;;
+        2)
+            RUN_GEN2=true
+            RUN_GEN3=false
+            ;;
+        3)
+            RUN_GEN2=false
+            RUN_GEN3=true
             ;;
         *)
             usage
@@ -104,86 +116,138 @@ else
     fi
 fi
 
-if [ $CORES = 1 ]; then
-    batchArgs="--batch-type=none --doraise"
-    runArgs="--doraise"
-else
-    batchArgs="--batch-type=smp --cores $CORES --doraise"
-    runArgs="-j $CORES --doraise"
-fi
-
-if ( $CLEANUP ); then
-    cleanFlag="--clean"
-else
-    cleanFlag=""
-fi
-
 export OMP_NUM_THREADS=1
 drp_stella_data=${DRP_STELLA_DATA_DIR:-drp_stella_data}
 
-if ( $BUILD_CALIBS ); then
-    # Construct repo
-    rm -rf $TARGET
-    mkdir -p $TARGET
-    mkdir -p $TARGET/CALIB
-    [ -e $TARGET/_mapper ] || echo "lsst.obs.pfs.PfsMapper" > $TARGET/_mapper
+if $RUN_GEN2; then
 
-    # Ingest images into repo
-    ingestPfsImages.py $TARGET --mode=link \
-        $drp_stella_data/raw/PFFA*.fits \
-        -c clobber=True register.ignore=True
+    if [ $CORES = 1 ]; then
+        batchArgs="--batch-type=none --doraise"
+        runArgs="--doraise"
+    else
+        batchArgs="--batch-type=smp --cores $CORES --doraise"
+        runArgs="-j $CORES --doraise"
+    fi
 
-    # Build calibs for brn
+    if ( $CLEANUP ); then
+        cleanFlag="--clean"
+    else
+        cleanFlag=""
+    fi
+
+    export PYTHONWARNINGS="ignore:Gen2 Butler has been deprecated:FutureWarning:"
+
+    if ( $BUILD_CALIBS ); then
+        # Construct repo
+        rm -rf $TARGET
+        mkdir -p $TARGET
+        mkdir -p $TARGET/CALIB
+        [ -e $TARGET/_mapper ] || echo "lsst.obs.pfs.PfsMapper" > $TARGET/_mapper
+
+        # Ingest images into repo
+        ingestPfsImages.py $TARGET --mode=link \
+            $drp_stella_data/raw/PFFA*.fits \
+            -c clobber=True register.ignore=True
+
+        ingestCuratedCalibs.py "$TARGET" --calib "$TARGET"/CALIB "$DRP_PFS_DATA_DIR"/curated/pfs/defects
+
+        # Build calibs for brn
+        generateCommands.py "$TARGET" \
+            "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
+            calibs_for_brn.sh \
+            --rerun="$RERUN"/calib --init --blocks=calibs_for_brn \
+            -j "$CORES" $cleanFlag
+        sh calibs_for_brn.sh
+
+        # Build calibs for bmn
+        generateCommands.py "$TARGET" \
+            "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
+            calibs_for_m.sh \
+            --rerun="$RERUN"/calib --blocks=calibs_for_m \
+            -j "$CORES" $cleanFlag
+        sh calibs_for_m.sh
+
+        # Build arcs for brn
+        generateCommands.py "$TARGET" \
+            "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
+            arc_brn.sh \
+            --rerun="$RERUN"/calib --blocks=arc_brn \
+            -j "$CORES" $cleanFlag
+        sh arc_brn.sh
+
+        # Build arcs for bmn
+        generateCommands.py "$TARGET" \
+            "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
+            arc_m.sh \
+            --rerun="$RERUN"/calib --blocks=arc_m \
+            -j "$CORES" $cleanFlag
+        sh arc_m.sh
+
+    fi
+
+    # Detrend only
+    # detrend.py $TARGET --calib $TARGET/CALIB --rerun $RERUN/detrend --id visit=47 $runArgs || exit 1
+
+    # End-to-end pipeline
+
+    # science frames for brn
     generateCommands.py "$TARGET" \
         "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
-        calibs_for_brn.sh \
-        --rerun="$RERUN"/calib --init --blocks=calibs_for_brn \
+        science_for_brn.sh \
+        --rerun="$RERUN" --blocks=science_for_brn \
         -j "$CORES" $cleanFlag
-    sh calibs_for_brn.sh
+    sh science_for_brn.sh
 
-    # Build calibs for bmn
+    # science frames for bmn
     generateCommands.py "$TARGET" \
         "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
-        calibs_for_m.sh \
-        --rerun="$RERUN"/calib --blocks=calibs_for_m \
+        science_for_bmn.sh \
+        --rerun="$RERUN" --blocks=science_for_bmn \
         -j "$CORES" $cleanFlag
-    sh calibs_for_m.sh
+    sh science_for_bmn.sh
 
-    # Build arcs for brn
-    generateCommands.py "$TARGET" \
-        "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
-        arc_brn.sh \
-        --rerun="$RERUN"/calib --blocks=arc_brn \
-        -j "$CORES" $cleanFlag
-    sh arc_brn.sh
-
-    # Build arcs for bmn
-    generateCommands.py "$TARGET" \
-        "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
-        arc_m.sh \
-        --rerun="$RERUN"/calib --blocks=arc_m \
-        -j "$CORES" $cleanFlag
-    sh arc_m.sh
-
+    echo "Done with Gen2."
 fi
 
-# Detrend only
-# detrend.py $TARGET --calib $TARGET/CALIB --rerun $RERUN/detrend --id visit=47 $runArgs || exit 1
+if $RUN_GEN3; then
 
-# End-to-end pipeline
-# science frames for brn
-generateCommands.py "$TARGET" \
-    "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
-    science_for_brn.sh \
-    --rerun="$RERUN" --blocks=science_for_brn \
-    -j "$CORES" $cleanFlag
-sh science_for_brn.sh
-# science frames for bmn
-generateCommands.py "$TARGET" \
-    "$PFS_PIPE2D_DIR"/examples/integration_test.yaml \
-    science_for_bmn.sh \
-    --rerun="$RERUN" --blocks=science_for_bmn \
-    -j "$CORES" $cleanFlag
-sh science_for_bmn.sh
+    DATASTORE=${TARGET}_Gen3
+    rm -rf $DATASTORE
 
-echo "Done."
+    # Preparation
+    checkPfsRawHeaders.py --fix $drp_stella_data/raw/PFFA*.fits
+    checkPfsConfigHeaders.py --fix $drp_stella_data/raw/pfsConfig-*.fits
+
+    # Setup
+    butler create $DATASTORE --seed-config $OBS_PFS_DIR/gen3/butler.yaml --dimension-config $OBS_PFS_DIR/gen3/dimensions.yaml --override
+    butler register-instrument $DATASTORE lsst.obs.pfs.PfsSimulator
+    butler register-skymap $DATASTORE -C $OBS_PFS_DIR/gen3/skymap_discrete.py -c name=simulator
+    butler ingest-raws $DATASTORE $drp_stella_data/raw/PFFA*.fits --ingest-task lsst.obs.pfs.gen3.PfsRawIngestTask --transfer link --fail-fast
+    ingestPfsConfig.py $DATASTORE lsst.obs.pfs.PfsSimulator PFS-F/raw/pfsConfig simulator $drp_stella_data/raw/pfsConfig*.fits --transfer link
+    butler ingest-files $DATASTORE detectorMap_bootstrap PFS-F/detectorMap/bootstrap --prefix $DRP_PFS_DATA_DIR/detectorMap $DRP_PFS_DATA_DIR/detectorMap/detectorMap-sim.ecsv --transfer copy
+    butler write-curated-calibrations $DATASTORE lsst.obs.pfs.PfsSimulator
+
+    # Calibs
+    pipetask run --register-dataset-types -j $CORES -b $DATASTORE --instrument lsst.obs.pfs.PfsSimulator -i PFS-F/raw/all,PFS-F/calib -o "$RERUN"/bias -p $DRP_STELLA_DIR/pipelines/bias.yaml -d "instrument='PFS-F' AND exposure.target_name = 'BIAS'" --fail-fast
+    butler certify-calibrations $DATASTORE "$RERUN"/bias PFS-F/calib bias --begin-date 2000-01-01T00:00:00 --end-date 2050-12-31T23:59:59
+
+    pipetask run --register-dataset-types -j $CORES -b $DATASTORE --instrument lsst.obs.pfs.PfsSimulator -i PFS-F/raw/all,PFS-F/calib -o "$RERUN"/dark -p '$DRP_STELLA_DIR/pipelines/dark.yaml' -d "instrument='PFS-F' AND exposure.target_name = 'DARK'" --fail-fast
+    butler certify-calibrations $DATASTORE "$RERUN"/dark PFS-F/calib dark --begin-date 2000-01-01T00:00:00 --end-date 2050-12-31T23:59:59
+
+    pipetask run --register-dataset-types -j $CORES -b $DATASTORE --instrument lsst.obs.pfs.PfsSimulator -i PFS-F/raw/all,PFS-F/calib -o "$RERUN"/flat -p '$DRP_STELLA_DIR/pipelines/flat.yaml' -d "instrument='PFS-F' AND exposure.target_name = 'FLAT'" --fail-fast
+    butler certify-calibrations $DATASTORE "$RERUN"/flat PFS-F/calib fiberFlat --begin-date 2000-01-01T00:00:00 --end-date 2050-12-31T23:59:59
+
+    pipetask run --register-dataset-types -j $CORES -b $DATASTORE --instrument lsst.obs.pfs.PfsSimulator -i PFS-F/raw/all,PFS-F/raw/pfsConfig,PFS-F/detectorMap/bootstrap,PFS-F/calib -o "$RERUN"/fiberProfiles -p '$DRP_STELLA_DIR/pipelines/fiberProfiles.yaml' -d "instrument='PFS-F' AND exposure.target_name IN ('FLAT_ODD', 'FLAT_EVEN')" -c measureDetectorMap:useBootstrapDetectorMap=True --fail-fast
+    butler certify-calibrations $DATASTORE "$RERUN"/fiberProfiles PFS-F/calib fiberProfiles --begin-date 2000-01-01T00:00:00 --end-date 2050-12-31T23:59:59
+
+    pipetask run --register-dataset-types -j $CORES -b $DATASTORE --instrument lsst.obs.pfs.PfsSimulator -i PFS-F/raw/all,PFS-F/raw/pfsConfig,PFS-F/detectorMap/bootstrap,PFS-F/calib -o "$RERUN"/detectorMap -p '$DRP_STELLA_DIR/pipelines/detectorMap.yaml' -d "instrument='PFS-F' AND exposure.target_name = 'ARC'" -c measureCentroids:useBootstrapDetectorMap=True -c fitDetectorMap:useBootstrapDetectorMap=True --fail-fast
+    butler certify-calibrations $DATASTORE "$RERUN"/detectorMap PFS-F/calib detectorMap --begin-date 2000-01-01T00:00:00 --end-date 2050-12-31T23:59:59
+
+    # Single exposure pipeline
+    pipetask run --register-dataset-types -j $CORES -b $DATASTORE --instrument lsst.obs.pfs.PfsSimulator -i PFS-F/raw/all,PFS-F/raw/pfsConfig,PFS-F/calib -o "$RERUN"/reduceExposure -p '$DRP_STELLA_DIR/pipelines/reduceExposure.yaml' -d "instrument='PFS-F' AND exposure.target_name = 'OBJECT'" --fail-fast
+
+    # Science pipeline
+    pipetask run --register-dataset-types -j $CORES -b $DATASTORE --instrument lsst.obs.pfs.PfsSimulator -i PFS-F/raw/all,PFS-F/raw/pfsConfig,PFS-F/calib -o "$RERUN"/science -p '$DRP_STELLA_DIR/pipelines/science.yaml' -d "instrument='PFS-F' AND exposure.target_name = 'OBJECT'" --fail-fast
+
+    echo "Done with Gen3."
+fi
