@@ -31,6 +31,43 @@ scienceVisitHashMR = '0x5ee4f7af5a556820'
 
 
 def get_redshift_pipe1d(pfsobject_dir, spec_in_dir, cat_id, visit_hash):
+    """
+    Description
+    -----------
+        check the redshift determination results of DRP1D
+
+    Parameters
+    ----------
+        pfsobject_dir : `string`
+            Directory of pfsObject- fits
+        spec_in_dir : `string`
+            Directory of pfsZcandidates- fits
+        cat_id : `string`
+            cadId
+        visit_hash : `string`
+            pfsVisithash
+
+    Returns
+    -------
+        filename_out : `ndarray`
+            Filenames of output
+        objId_out : `ndarray`
+            objId of input/output sources
+        redshift_in : `ndarray`
+            Redshift of input spectra
+        redshift_out : `ndarray`
+            Redshift of output spectra
+        l3727_in : `ndarray`
+            L([OII]3727) of input sources
+        l3729_in : `ndarray`
+            L([OII]3729) of input sources
+        ver_pipe2d : `string`
+            Version of PIPE2D
+        ver_pipe1d_library : `string`
+            Version of PIPE1D (library)
+        ver_pipe1d_client : `string`
+            Version of PIPE1D (client)
+    """
 
     filename_out = []
     objId_out = []
