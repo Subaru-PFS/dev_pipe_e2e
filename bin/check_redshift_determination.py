@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 import pathlib
 
-pipe2d_res_dir = '/arch1/ipmu/pipe_e2e_test/pipe2d_results/rerun/'
-pipe1d_res_dir = '/arch1/ipmu/pipe_e2e_test/pipe1d_results/output/data/'
+pipe2d_res_dir = '/arch1/ipmu/pipe_e2e/pipe2d_results/rerun/'
+pipe1d_res_dir = '/arch1/ipmu/pipe_e2e/pipe1d_results/output/data/'
 weekly_spec_in_dir = '/arch1/princeton/simulator/pfsSimObjects/lowz_COSMOS_2020_12_14/'
 science_spec_in_dir = '/arch1/princeton/simulator/pfsSimObjects/GE_combined_2021_08_05/'
 weekly_brn_pfsobject_dir = os.path.join(pipe2d_res_dir,

@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
 
-base_dir = '/arch1/ipmu/pipe_e2e_test/'
+base_dir = '/arch1/ipmu/pipe_e2e/'
 res_2d_dir = os.path.join(base_dir,
                           'pipe2d_results/rerun',
                           'weekly/pipeline/brn/pipeline/pfsObject',
